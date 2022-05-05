@@ -1,0 +1,53 @@
+#!/bin/bash
+
+#export MYSQL_PWD="-puniandeS.1"
+user="cloud"
+password="uniandeS.1"
+estado="En proceso"
+FILES=/home/l.nivia/proyecto1/backend/static/uploadfiles/*.ogg
+for f in $FILES
+    do
+       voz_ori="static/uploadfiles/${f:51:100}"
+       voz_con="${f%.*}.mp3"    
+       ffmpeg -i $f "${f%.*}.mp3"
+       rm $f
+       voz_con="static/uploadfiles/${voz_con:51:100}"
+       mysql -u $user -p$password -se "update supervoices.Propuesta set voz_convertida='$voz_con' where voz_original='$voz_ori'"
+    done
+
+FILES2=/home/l.nivia/proyecto1/backend/static/uploadfiles/*.wav
+for f in $FILES2
+    do
+       voz_ori="static/uploadfiles/${f:51:100}"
+       voz_con="${f%.*}.mp3"
+       ffmpeg -i $f "${f%.*}.mp3"
+       rm $f
+       voz_con="static/uploadfiles/${voz_con:51:100}"
+       mysql -u $user -p$password -se "update supervoices.Propuesta set voz_convertida='$voz_con' where voz_original='$voz_ori'"
+    done
+
+FILES3=/home/l.nivia/proyecto1/backend/static/uploadfiles/*.mp3
+for f in $FILES3
+    do
+       voz_ori="static/uploadfiles/${f:51:100}"
+       voz_con="static/uploadfiles/${f:51:100}"
+       estado=$(mysql -u $user -p$password -se "select estado from supervoices.Propuesta where voz_original = '$voz_ori'" -B --skip-column-names)
+       echo "estado:"
+       echo $estado
+       estado = estado | tr -d '[[:space:]]'
+       echo "voz_ori"
+       echo $voz_ori
+	if [[ $estado == "En proceso" ]]
+		then
+   			id_concurso=$(mysql -u $user -p$password -se "select id_concurso from supervoices.Propuesta where voz_original = '$voz_ori'" -B --skip-column-names)
+			echo "entró al if!"
+	else
+			id_concurso2=2
+			echo "No Entró"
+	fi
+       mysql -u $user -p$password -se "update supervoices.Propuesta set voz_convertida='$voz_con' where voz_original='$voz_ori'"
+    done
+    dest=$(mysql -u $user -p$password -se "select a.email from supervoices.Locutor a,supervoices.Propuesta b where a.id_locutor = b.id_locutor and b.estado ='$estado'")
+mysql -u $user -p$password -se "update supervoices.Propuesta set estado='Convertida'"
+echo "Su voz ha sido convertida. consulte en: http://172.24.41.200:5000/$id_concurso" | mail -s "voz convertida" $dest
+chmod 777 /home/l.nivia/proyecto1/backend/static/uploadfiles/*
